@@ -1,0 +1,41 @@
+   .table
+    {
+        display: table;
+        width: 100%;
+        border-spacing: 2px;
+    }
+    .title
+    {
+        display: table-caption;
+        text-align: center;
+        font-weight: bold;
+        font-size: larger;
+    }
+    .heading
+    {
+        display: table-row;
+        font-weight: bold;
+        text-align: center;
+    }
+    .row
+    {
+        display: table-row;
+    }
+    .cell
+    {
+        display: table-cell;
+        border: solid;
+        border-width: thin;
+        padding-left: 5px;
+        padding-right: 5px;
+        width: 33%;
+        background-color: #00f0f0;
+    }
+    .bigcell
+    {
+        display: table-cell;
+        border: solid;
+        border-width: thin;
+        width=100%;
+    }
+
