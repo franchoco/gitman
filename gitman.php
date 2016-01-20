@@ -1,48 +1,7 @@
 <html>
 <head>
-<style type="text/css">
-    .table
-    {
-        display: table;
-        width: 100%;
-        border-spacing: 2px;
-    }
-    .title
-    {
-        display: table-caption;
-        text-align: center;
-        font-weight: bold;
-        font-size: larger;
-    }
-    .heading
-    {
-        display: table-row;
-        font-weight: bold;
-        text-align: center;
-    }
-    .row
-    {
-        display: table-row;
-    }
-    .cell
-    {
-        display: table-cell;
-        border: solid;
-        border-width: thin;
-        padding-left: 5px;
-        padding-right: 5px;
-	width: 33%;
-	background-color: #00f0f0;
-    }
-    .bigcell
-    {
-        display: table-cell;
-        border: solid;
-        border-width: thin;
-	width=100%;
-    }
-</style>
-
+<title>GitMan</title>
+<link rel="stylesheet" href="gitman.css">
 </head>
 <body bgcolor=white>
 
@@ -65,8 +24,7 @@ unset ($assoc);
 
 # Get Subscription ('cause subscription in filters doesn't work)
 $watchedrepo = array();
-$query = `curl -s -H "Authorization: token $token" https://api.github.com/user/subscriptio
-ns?per_page=100\&direction\=asc`;
+$query = `curl -s -H "Authorization: token $token" https://api.github.com/user/subscriptions?per_page=100\&direction\=asc`;
 $query = json_decode($query);
 foreach ($query as $wrep)
   {
@@ -85,8 +43,7 @@ $assoc = array();
 $len = 0;
 $page=1;
 do {
-$query = `curl -s -H "Authorization: token $token" https://api.github.com/orgs/$org/issues
-\?filter\=all\&state\=all\&direction\=asc\&per_page\=100\&page=$page`;
+$query = `curl -s -H "Authorization: token $token" https://api.github.com/orgs/$org/issues\?filter\=all\&state\=all\&direction\=asc\&per_page\=100\&page=$page`;
 $page++;
 $len = strlen($query);
 $query = json_decode($query,true);
@@ -116,21 +73,21 @@ foreach($list as $key => $issue)
   $labels="";
   foreach ((array)($issue->labels) as $label)
     {
-    $labels.="<span style='background-color:#".$label->color."'>[".$label->name."]</span> 
-";
+    $labels.="<span style='background-color:#".$label->color."'>[".$label->name."]</span>";
     }
   unset($issue->labels);
  
   $urlrepo = explode('/',$issue->url);
   $reponame = $urlrepo[count($urlrepo)-3]; 
-  if (!isset($watchedrepo[$reponame]) || !strpos($labels,"idea")===false || !strpos($label
-s,"invalid")===false )
+
+  if (!isset($watchedrepo[$reponame]) || !strpos($labels,"idea")===false || !strpos($labels,"invalid")===false )
     {
     unset($list[$key]);
     continue;
     }
 
   $issue->labels=$labels;
+  $issue->reponame=$reponame;
 
   if (isset($issue->milestone))
     {
@@ -170,12 +127,11 @@ foreach($mil as $id => $m)
     $milesurl = explode('/',$milesurl);
     array_pop($milesurl);
     $milesurl = implode('/',$milesurl);
-    print "[<a href=$milesurl>$reponame</a>] ".$m[0]->milestone->title.": \n";
+    print "[<a href=$milesurl>".$reponame."</a>] ".$m[0]->milestone->title.": \n";
     print "</td><td alignt=left>";
     print "Created at ".substr($m[0]->milestone->created_at,0,10);
     print "</td><td align=left>";
-    print "<table style='border:1px solid gray; width:200px;text-align: left;vertical-alig
-n:middle;padding:0px;table-layout: fixed;'><tr>\n";
+    print "<table style='border:1px solid gray; width:200px;text-align: left;vertical-align:middle;padding:0px;table-layout: fixed;'><tr>\n";
     $created_at=new DateTime(substr($m[0]->milestone->created_at,0,10));
     $due_on=new DateTime(substr($m[0]->milestone->due_on,0,10));
     $duration=($due_on->diff($created_at)->days)+0;
@@ -223,67 +179,61 @@ unset($open);unset($close);
 
 $i=0;
 
+$rname="";
+
 foreach($human as $login => $issues)
   {
-  $open = array();
-  $close = array();
+  $arr = array();
   foreach ($issues as $issue)
     {
-    if ($issue->state == "open") $open[]=$issue;
-    else $close[]=$issue;
+    if ($issue->state == "open") $arr[$issue->reponame]['open'][]=$issue;
+    else $arr[$issue->reponame]['closed'][]=$issue;
     }
+
   $i++;
   print "<div class=cell>\n";
   print "<tt>$login</tt>\n<br>\n";
-  print "<li>open:";
-  foreach ($open as $o)
+  foreach ($arr as $name => $ids)
     {
-    unset($spanL);
-    $antes = new DateTime(substr($o->created_at,0,10));
-    $diff = $today->diff($antes);
-    $dias = $diff->days+0;
-    if ($dias > 14)
+    print "<li>".$name.": open={";
+    if (!empty($ids['open']))
+    foreach ($ids['open'] as $ticket)
       {
-      $spanL="<span style='background-color:red'>";
-      }
-    elseif ($dias > 7)
-      {
-      $spanL="<span style='background-color:yellow'>";
-      }
-    if(isset($spanL)) $spanR="</span>";
-    else $spanL="";
+      unset($spanL);
+      $created_at = new DateTime(substr($ticket->created_at,0,10));
+      $diff = $today->diff($created_at);
+      $days = $diff->days+0;
+      if ($days > 14) $spanL="<span style='background-color:red'>";
+      elseif ($days > 7) $spanL="<span style='background-color:yellow'>";
+      if(isset($spanL)) $spanR="</span>";
+      else $spanL="";
 
-    print  $spanL."[<a href=".$o->html_url." title=\"".$o->title."\">".$o->number."</a>]".
-$spanR;
-    unset($antes);unset($diff);
-    }
-  print "</li><li>closed:\n";
-  foreach ($close as $o)
-    {
-    unset($spanL);
-    $despues = new DateTime(substr($o->closed_at,0,10));
-    $antes = new DateTime(substr($o->created_at,0,10));
-    $diff = $despues->diff($antes);
-    $dias = $diff->days+0;
-    if ($dias > 14)
-      {
-      $spanL="<span style='background-color:red'>";
+      print $spanL."[<a href=".$ticket->html_url." title=\"".$ticket->title."\">".$ticket->number."</a>]$spanR";
+      unset($created_at);unset($diff);
       }
-    elseif ($dias > 7)
+    print "}, closed={";
+
+    if (!empty($ids['closed']))
+    foreach ($ids['closed'] as $ticket)
       {
-      $spanL="<span style='background-color:yellow'>";
+      unset($spanL);
+      $closed_at = new DateTime(substr($o->closed_at,0,10));
+      $created_at = new DateTime(substr($o->created_at,0,10));
+      $diff = $closed_at->diff($created_at);
+      $days = $diff->days+0;
+      if ($days > 14) $spanL="<span style='background-color:red'>";
+      elseif ($dias > 7) $spanL="<span style='background-color:yellow'>";
+      if(isset($spanL)) $spanR="</span>";
+      else $spanL="";
+
+      print $spanL."[<a href=".$ticket->html_url." title=\"".$ticket->title."\">".$ticket->number."</a>]$spanR";
+      unset($closed_at);unset($diff);unset($created_at);
       }
-    if(isset($spanL)) $spanR="</span>";
-    else $spanL="";
-
-    print $spanL."[<a href=".$o->html_url." title=\"".$o->title."\">".$o->number."</a>]$sp
-anR";
-
-    unset($antes);unset($diff);unset($despues);
+    print "}</li>\n";
     }
 
   print "</li></div><br>\n";
-  unset($open);unset($close);
+  unset($arr);
   if ($i % 3 == 0) print "</div><div class=row>\n";
   }
 
@@ -320,8 +270,7 @@ foreach ($open as $o)
     $spanL="<span style='background-color:yellow'>";
     }
   if(isset($spanL)) $spanR="</span>";
-  print  $spanL."[<a href=".$o->html_url." title=\"".$o->title."\">".$o->number."</a>]".$s
-panR;
+  print  $spanL."[<a href=".$o->html_url." title=\"".$o->title."\">".$o->number."</a>]".$spanR;
   unset($antes);unset($diff);
   }
 print "</li><li>closed:\n";
@@ -370,11 +319,9 @@ uasort($list,'cmp');
 
 foreach($list as $issue)
   {
-  if ($issue->state=="open" && !isset($issue->pull_request) && (strpos($labels,"idea")===f
-alse)) 
+  if ($issue->state=="open" && !isset($issue->pull_request) && (strpos($labels,"idea")===false)) 
     {
-    print "<a href=".$issue->html_url.">[$i]</a> (".substr($issue->created_at,0,10).") ".$
-issue->repository->name." issue ".$issue->closed_at." ".$issue->title." ".$issue->labels."
+    print "<a href=".$issue->html_url.">[$i]</a> (".substr($issue->created_at,0,10).") ".$issue->repository->name." issue ".$issue->closed_at." ".$issue->title." ".$issue->labels."
 <br>\n";
     if($i++ >= 10) break;
     }
