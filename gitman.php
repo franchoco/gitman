@@ -6,21 +6,51 @@
 <body bgcolor=white>
 
 <?php
-if (isset($_GET['token']))
+if (isset($_GET['token']) || isset($_GET['org']))
   {
-  $token=$_GET['token'];
-  $org=$_GET['org'];
+  $token=htmlspecialchars($_GET['token'], ENT_QUOTES);
+  $org=htmlspecialchars($_GET['org'], ENT_QUOTES);
   }
 else
   {
+  ini_set('display_errors', 'On');
+  error_reporting(E_ALL);
   $token=$argv[1];
   $org=$argv[2];
   }
 
+date_default_timezone_set("America/Santiago");
+$today = new DateTime('now');
 
+function print_issue_number_linked($issue,$t_yellow,$t_red,$closed=false)
+{
+global $today;
+unset($spanL);
+$created_at = new DateTime(substr($issue->created_at,0,10));
+if ($closed)
+  {
+  $closed_at = new DateTime(substr($issue->closed_at,0,10));
+  $diff = $closed_at->diff($created_at);
+  }
+else
+  {
+  $diff = $today->diff($created_at);
+  }
+
+$days = $diff->days+0;
+if ($days > $t_red) $spanL="<span style='background-color:red'>";
+elseif ($days > $t_yellow) $spanL="<span style='background-color:yellow'>";
+if(isset($spanL)) $spanR="</span>";
+else $spanL="";
+
+print $spanL."[<a href=".$issue->html_url." title=\"".$issue->title."\">".$issue->number."</a>]$spanR";
+unset($created_at);unset($diff);unset($closed_at);
+}
+ 
 unset ($repos);
 unset ($assoc);
 
+if (!isset($_GET['token'])) print "[1] reading watched repositories\n";
 
 # Get Subscription ('cause subscription in filters doesn't work)
 $watchedrepo = array();
@@ -37,6 +67,8 @@ foreach ($query as $wrep)
     }
   }
 # read JSON
+
+if (!isset($_GET['token'])) print "[2] reading and filtering issues\n";
 
 $assoc = array();
 
@@ -67,6 +99,8 @@ $nomil = array();
 $human = array();
 $nohuman = array();
 
+if (!isset($_GET['token'])) print "[3] aggregating info\n";
+
 # Aggregate info
 foreach($list as $key => $issue)
   {
@@ -80,7 +114,7 @@ foreach($list as $key => $issue)
   $urlrepo = explode('/',$issue->url);
   $reponame = $urlrepo[count($urlrepo)-3]; 
 
-  if (!isset($watchedrepo[$reponame]) || !strpos($labels,"idea")===false || !strpos($labels,"invalid")===false )
+  if (!isset($watchedrepo[$reponame]) || !strpos($labels,"idea")===false || !strpos($labels,"invalid")===false)
     {
     unset($list[$key]);
     continue;
@@ -107,8 +141,9 @@ foreach($list as $key => $issue)
     }
   }
 unset($issue);
-date_default_timezone_set("America/Santiago");
-$today = new DateTime('now');
+
+if (!isset($_GET['token'])) print "[4] print milestones\n";
+
 ?>
 <h1>Milestones</h1>
 
@@ -167,6 +202,7 @@ foreach($mil as $id => $m)
   }
 print "</table>\n";
 
+if (!isset($_GET['token'])) print "[5] print tickets per user\n";
 ?>
 <hr>
 <h1>Tickets per user</h1>
@@ -186,6 +222,7 @@ foreach($human as $login => $issues)
   $arr = array();
   foreach ($issues as $issue)
     {
+    if (isset($issue->pull_request)) continue;
     if ($issue->state == "open") $arr[$issue->reponame]['open'][]=$issue;
     else $arr[$issue->reponame]['closed'][]=$issue;
     }
@@ -199,35 +236,14 @@ foreach($human as $login => $issues)
     if (!empty($ids['open']))
     foreach ($ids['open'] as $ticket)
       {
-      unset($spanL);
-      $created_at = new DateTime(substr($ticket->created_at,0,10));
-      $diff = $today->diff($created_at);
-      $days = $diff->days+0;
-      if ($days > 14) $spanL="<span style='background-color:red'>";
-      elseif ($days > 7) $spanL="<span style='background-color:yellow'>";
-      if(isset($spanL)) $spanR="</span>";
-      else $spanL="";
-
-      print $spanL."[<a href=".$ticket->html_url." title=\"".$ticket->title."\">".$ticket->number."</a>]$spanR";
-      unset($created_at);unset($diff);
+      print_issue_number_linked($ticket,7,14);
       }
     print "}, closed={";
 
     if (!empty($ids['closed']))
     foreach ($ids['closed'] as $ticket)
       {
-      unset($spanL);
-      $closed_at = new DateTime(substr($o->closed_at,0,10));
-      $created_at = new DateTime(substr($o->created_at,0,10));
-      $diff = $closed_at->diff($created_at);
-      $days = $diff->days+0;
-      if ($days > 14) $spanL="<span style='background-color:red'>";
-      elseif ($dias > 7) $spanL="<span style='background-color:yellow'>";
-      if(isset($spanL)) $spanR="</span>";
-      else $spanL="";
-
-      print $spanL."[<a href=".$ticket->html_url." title=\"".$ticket->title."\">".$ticket->number."</a>]$spanR";
-      unset($closed_at);unset($diff);unset($created_at);
+      print_issue_number_linked($ticket,7,14,true);
       }
     print "}</li>\n";
     }
@@ -244,6 +260,7 @@ foreach($human as $login => $issues)
 <h1>Non-user Tickets</h1>
 
 <?php
+if (!isset($_GET['token'])) print "[6] print non-user tickets\n";
 
 unset($open);unset($close);
 $open = array();
@@ -257,45 +274,12 @@ foreach ($nohuman as $issue)
 print "<li>open:";
 foreach ($open as $o)
   {
-  unset($spanL);
-  $antes = new DateTime(substr($o->created_at,0,10));
-  $diff = $today->diff($antes);
-  $dias = $diff->days+0;
-  if ($dias > 14)
-    {
-    $spanL="<span style='background-color:red'>";
-    }
-  elseif ($dias > 7)
-    {
-    $spanL="<span style='background-color:yellow'>";
-    }
-  if(isset($spanL)) $spanR="</span>";
-  print  $spanL."[<a href=".$o->html_url." title=\"".$o->title."\">".$o->number."</a>]".$spanR;
-  unset($antes);unset($diff);
+  print_issue_number_linked($o,7,14);
   }
 print "</li><li>closed:\n";
 foreach ($close as $o)
   {
-  unset($spanL);
-  $despues = new DateTime(substr($o->closed_at,0,10));
-  $antes = new DateTime(substr($o->created_at,0,10));
-  $diff = $despues->diff($antes);
-  $dias = $diff->days+0;
-  if ($dias > 14)
-    {
-    $spanL="<span style='background-color:red'>";
-    }
-  elseif ($dias > 7)
-    {
-    $spanL="<span style='background-color:yellow'>";
-    }
-  if(isset($spanL)) $spanR="</span>";
-  else $spanL="";
-
-  print $spanL."[<a href=".$o->html_url." title=\"".$o->title."\">".$o->number."</a>]$span
-R";
-
-  unset($antes);unset($diff);unset($despues);
+  print_issue_number_linked($o,7,14,true);
   }
 
 print "</li></div><br>\n";
@@ -303,9 +287,68 @@ unset($open);unset($close);
 
 ?>
 </div>
+<hr>
+<h1>Pull Requests</h1>
+
+<div class=table>
+<div class=row>
+<?php
+
+unset($open);unset($close);
+
+$i=0;
+
+$rname="";
+
+foreach($human as $login => $issues)
+  {
+  $arr = array();
+  foreach ($issues as $issue)
+    {
+    if (!isset($issue->pull_request)) continue;
+    if ($issue->state == "open") $arr[$issue->reponame]['open'][]=$issue;
+    else $arr[$issue->reponame]['closed'][]=$issue;
+    }
+
+  if (reset($arr) === false) continue;
+
+  $i++;
+  print "<div class=cell>\n";
+  print "<tt>$login</tt>\n<br>\n";
+  foreach ($arr as $name => $ids)
+    {
+
+    print "<li>".$name.": open={";
+    if (!empty($ids['open']))
+    foreach ($ids['open'] as $ticket)
+      {
+      print_issue_number_linked($ticket,7,14);
+      }
+    print "}, closed={";
+
+    if (!empty($ids['closed']))
+    foreach ($ids['closed'] as $ticket)
+      {
+      print_issue_number_linked($ticket,7,14,true);
+      }
+    print "}</li>\n";
+    }
+
+  print "</li></div><br>\n";
+  unset($arr);
+  if ($i % 3 == 0) print "</div><div class=row>\n";
+  }
+
+?>
+</div>
+</div>
+
 <h1>10 older issues</h1>
 
 <?php
+
+if (!isset($_GET['token'])) print "[7] print ten older users\n";
+
 $i=1;
 
 function cmp($a, $b) {
