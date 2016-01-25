@@ -1,41 +1,84 @@
-   .table
+body 
+ {
+ color: black;
+ font-family: Arial, Times, serif;
+ font-size: 12px;
+ }
+
+.h1
+ {
+ font-size: 14px;
+ }
+
+
+.table
     {
-        display: table;
-        width: 100%;
-        border-spacing: 2px;
+    display: table;
+    width: 100%;
+    border-spacing: 2px;
     }
-    .title
+.title
     {
-        display: table-caption;
-        text-align: center;
-        font-weight: bold;
-        font-size: larger;
+    display: table-caption;
+    text-align: center;
+    font-weight: bold;
+    font-size: larger;
     }
-    .heading
+.heading
     {
-        display: table-row;
-        font-weight: bold;
-        text-align: center;
+    display: table-row;
+    font-weight: bold;
+    text-align: center;
     }
-    .row
+.row
     {
-        display: table-row;
+    display: table-row;
     }
-    .cell
+.cell
+    {
+    display: table-cell;
+    border: solid;
+    border-width: thin;
+    padding-left: 5px;
+    padding-right: 5px;
+    width: 25%;
+    background-color: #00f9f9;
+    }
+.bigcell
     {
         display: table-cell;
         border: solid;
         border-width: thin;
-        padding-left: 5px;
-        padding-right: 5px;
-        width: 33%;
-        background-color: #00f0f0;
+        width:100%;
     }
-    .bigcell
-    {
-        display: table-cell;
-        border: solid;
-        border-width: thin;
-        width=100%;
-    }
+
+
+.divreponame
+  {
+  display: table-cell;
+  float: left;
+  vertical-align: top;
+  }
+
+.divissue
+  {
+  display: table-cell;
+  overflow: hidden;
+  vertical-align: top;
+  align: right;
+  }
+
+.divopen
+  {
+  vertical-align: top;
+  margin: 1px 1px;
+  width:100%;
+  }
+
+.divclosed
+  {
+  vertical-align: bottom;
+  margin: 1px 1px;
+  width:100%;
+  }
 

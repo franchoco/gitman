@@ -229,28 +229,34 @@ foreach($human as $login => $issues)
 
   $i++;
   print "<div class=cell>\n";
-  print "<tt>$login</tt>\n<br>\n";
+  print "<tt>$login</tt>\n<hr>\n";
+
   foreach ($arr as $name => $ids)
     {
-    print "<li>".$name.": open={";
+    print "<div class=row>\n";
+    print "<div class=divreponame>$name</div>\n";
+    print "<div class=divissue>";
+    print "<div class=divopen>O:";
     if (!empty($ids['open']))
     foreach ($ids['open'] as $ticket)
       {
       print_issue_number_linked($ticket,7,14);
       }
-    print "}, closed={";
+    print "</div><div class=divclosed>C:";
 
     if (!empty($ids['closed']))
     foreach ($ids['closed'] as $ticket)
       {
       print_issue_number_linked($ticket,7,14,true);
       }
-    print "}</li>\n";
+    print "</div>\n";
+    print "</div>\n";
+    print "</div>\n";
     }
 
-  print "</li></div><br>\n";
+  print "</div>\n";
   unset($arr);
-  if ($i % 3 == 0) print "</div><div class=row>\n";
+  if ($i % 4 == 0) print "</div><div class=row>\n";
   }
 
 ?>
@@ -314,29 +320,35 @@ foreach($human as $login => $issues)
 
   $i++;
   print "<div class=cell>\n";
-  print "<tt>$login</tt>\n<br>\n";
+  print "<tt>$login</tt>\n<hr>\n";
   foreach ($arr as $name => $ids)
     {
+    print "<div class=row>\n";
+    print "<div class=divreponame>$name</div>\n";
+    print "<div class=divissue>";
+    print "<div class=divopen>O:";
 
-    print "<li>".$name.": open={";
     if (!empty($ids['open']))
     foreach ($ids['open'] as $ticket)
       {
       print_issue_number_linked($ticket,7,14);
       }
-    print "}, closed={";
+    print "</div><div class=divclosed>C:";
+
 
     if (!empty($ids['closed']))
     foreach ($ids['closed'] as $ticket)
       {
       print_issue_number_linked($ticket,7,14,true);
       }
-    print "}</li>\n";
+    print "</div>\n";
+    print "</div>\n";
+    print "</div>\n";
     }
 
-  print "</li></div><br>\n";
+  print "</div>\n";
   unset($arr);
-  if ($i % 3 == 0) print "</div><div class=row>\n";
+  if ($i % 4 == 0) print "</div><div class=row>\n";
   }
 
 ?>
