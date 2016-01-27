@@ -41,7 +41,7 @@ $days = $diff->days+0;
 if ($days > $t_red) $spanL="<span style='background-color:red'>";
 elseif ($days > $t_yellow) $spanL="<span style='background-color:yellow'>";
 if(isset($spanL)) $spanR="</span>";
-else $spanL="";
+else {$spanL="";$spanR="";}
 
 print $spanL."[<a href=".$issue->html_url." title=\"".$issue->title."\">".$issue->number."</a>]$spanR";
 unset($created_at);unset($diff);unset($closed_at);
@@ -98,6 +98,8 @@ $mil = array();
 $nomil = array();
 $human = array();
 $nohuman = array();
+$todo = array();
+$pull_request = array();
 
 if (!isset($_GET['token'])) print "[3] aggregating info\n";
 
@@ -110,18 +112,17 @@ foreach($list as $key => $issue)
     $labels.="<span style='background-color:#".$label->color."'>[".$label->name."]</span>";
     }
   unset($issue->labels);
+  $issue->labels=$labels;
  
   $urlrepo = explode('/',$issue->url);
   $reponame = $urlrepo[count($urlrepo)-3]; 
+  $issue->reponame=$reponame;
 
-  if (!isset($watchedrepo[$reponame]) || !strpos($labels,"idea")===false || !strpos($labels,"invalid")===false)
+  if (!isset($watchedrepo[$reponame]) || !strpos($labels,"idea")===false || !strpos($labels,"invalid")===false || !strpos($labels,"todo")===false)
     {
     unset($list[$key]);
     continue;
     }
-
-  $issue->labels=$labels;
-  $issue->reponame=$reponame;
 
   if (isset($issue->milestone))
     {
@@ -131,13 +132,25 @@ foreach($list as $key => $issue)
     {
     $nomil[] = $issue;
     }
-  if (isset($issue->assignee))
+
+  if ((!strpos($labels,"todo"))===false)
+    {
+    $todo[$reponame][]=$issue;
+    $reponames[$reponame]=true;
+    }
+  elseif (isset($issue->pull_request))
+    {
+    $pull_request[$issue->reponame][]=$issue;
+    $reponames[$reponame]=true;
+    }
+  elseif (isset($issue->assignee))
     {
     $human[$issue->assignee->login][]=$issue;
     }
     else
     {
-    $nohuman[]=$issue;
+    $nohuman[$issue->reponame][]=$issue;
+    $reponames[$reponame]=true;
     }
   }
 unset($issue);
@@ -153,8 +166,7 @@ print "<table border=0 width=100%><tr align=left>\n";
 foreach($mil as $id => $m)
   {
   # First milestone has the information of all tickets
-  $reponames = explode("/",$m[0]->url);
-  $reponame = $reponames[count($reponames)-3];
+  $reponame = $m[0]->reponame;
   if ($m[0]->milestone->state == "open")
     {
     print "<td align=left width=auto>";
@@ -263,38 +275,8 @@ foreach($human as $login => $issues)
 </div>
 </div>
 
-<h1>Non-user Tickets</h1>
-
-<?php
-if (!isset($_GET['token'])) print "[6] print non-user tickets\n";
-
-unset($open);unset($close);
-$open = array();
-$close = array();
-
-foreach ($nohuman as $issue)
-  {
-  if ($issue->state == "open") $open[]=$issue;
-  else $close[]=$issue;
-  }
-print "<li>open:";
-foreach ($open as $o)
-  {
-  print_issue_number_linked($o,7,14);
-  }
-print "</li><li>closed:\n";
-foreach ($close as $o)
-  {
-  print_issue_number_linked($o,7,14,true);
-  }
-
-print "</li></div><br>\n";
-unset($open);unset($close);
-
-?>
-</div>
 <hr>
-<h1>Pull Requests</h1>
+<h1>Repo View</h1>
 
 <div class=table>
 <div class=row>
@@ -304,56 +286,96 @@ unset($open);unset($close);
 
 $i=0;
 
-$rname="";
-
-foreach($human as $login => $issues)
+foreach ($reponames as $reponame => $value)
   {
-  $arr = array();
-  foreach ($issues as $issue)
+  if (!isset($pull_request[$reponame]) && !isset($nohuman[$reponame])) continue;
+
+  unset($pr);unset($nh);
+  $pr = array();
+  $nh = array();
+
+  if (isset($pull_request[$reponame])) 
     {
-    if (!isset($issue->pull_request)) continue;
-    if ($issue->state == "open") $arr[$issue->reponame]['open'][]=$issue;
-    else $arr[$issue->reponame]['closed'][]=$issue;
+    foreach($pull_request[$reponame] as $issue)
+      {
+      if ($issue->state == "open") $pr['open'][]=$issue;
+      else $pr['closed'][]=$issue;
+      }
+    }
+  if (isset($nohuman[$reponame])) 
+    {
+    foreach ($nohuman[$reponame] as $issue)
+      {
+      if ($issue->state == "open") $nh['open'][]=$issue;
+      else $nh['closed'][]=$issue;
+      }
     }
 
-  if (reset($arr) === false) continue;
-
-  $i++;
   print "<div class=cell>\n";
-  print "<tt>$login</tt>\n<hr>\n";
-  foreach ($arr as $name => $ids)
+  print "<tt>$reponame</tt>\n<hr>\n";
+
+  if (isset($pull_request[$issue->reponame]))
     {
+    print "Pull Requests:<br>\n";
+
     print "<div class=row>\n";
-    print "<div class=divreponame>$name</div>\n";
+    print "<div class=divreponame></div>\n";
     print "<div class=divissue>";
     print "<div class=divopen>O:";
 
-    if (!empty($ids['open']))
-    foreach ($ids['open'] as $ticket)
-      {
-      print_issue_number_linked($ticket,7,14);
-      }
+    if (!empty($pr['open']))
+      foreach ($pr['open'] as $ticket)
+        {
+        print_issue_number_linked($ticket,7,14);
+        }
     print "</div><div class=divclosed>C:";
 
-
-    if (!empty($ids['closed']))
-    foreach ($ids['closed'] as $ticket)
-      {
-      print_issue_number_linked($ticket,7,14,true);
-      }
+    if (!empty($pr['closed']))
+      foreach ($pr['closed'] as $ticket)
+        {
+        print_issue_number_linked($ticket,7,14,true);
+        }
     print "</div>\n";
     print "</div>\n";
     print "</div>\n";
     }
 
-  print "</div>\n";
-  unset($arr);
-  if ($i % 4 == 0) print "</div><div class=row>\n";
+  if (isset($nohuman[$reponame]))
+    {
+    if (isset($pull_request[$issue->reponame])) print "<hr>\n";
+
+    print "Unassigned issues:<br>\n";
+
+    print "<div class=row>\n";
+    print "<div class=divreponame></div>\n";
+    print "<div class=divissue>";
+    print "<div class=divopen>O:";
+
+    foreach ($nh['open'] as $o)
+      {
+      print_issue_number_linked($o,7,14);
+      }
+    print "</div><div class=divclosed>C:";
+
+    foreach ($nh['closed'] as $o)
+      {
+      print_issue_number_linked($o,7,14,true);
+      }
+    print "</div>\n";
+    print "</div>\n";
+    print "</div>\n";
+
+    }
+  print "</div>\n"; # del cell
+
+  $i++;
+  if (($i % 4) == 0) print "</div><div class=row>\n";
   }
 
 ?>
 </div>
 </div>
+<hr>
 
 <h1>10 older issues</h1>
 
@@ -374,7 +396,7 @@ uasort($list,'cmp');
 
 foreach($list as $issue)
   {
-  if ($issue->state=="open" && !isset($issue->pull_request) && (strpos($labels,"idea")===false)) 
+  if ($issue->state=="open" && !isset($issue->pull_request)) 
     {
     print "<a href=".$issue->html_url.">[$i]</a> (".substr($issue->created_at,0,10).") ".$issue->repository->name." issue ".$issue->closed_at." ".$issue->title." ".$issue->labels."
 <br>\n";
