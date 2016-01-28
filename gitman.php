@@ -6,18 +6,30 @@
 <body bgcolor=white>
 
 <?php
+
 if (isset($_GET['token']) || isset($_GET['org']))
   {
+  if (empty($_GET['token']) || empty($_GET['org'])) 
+    {
+    print "usage: URL?token=YOURTOKEN&org=YOURORG\n";
+    exit;
+    }
   $token=htmlspecialchars($_GET['token'], ENT_QUOTES);
   $org=htmlspecialchars($_GET['org'], ENT_QUOTES);
   }
 else
   {
+  if (sizeof($argv) != 3) 
+    {
+    print "usage: URL?token=YOURTOKEN&org=YOURORG\n";
+    exit;
+    }
   ini_set('display_errors', 'On');
   error_reporting(E_ALL);
   $token=$argv[1];
   $org=$argv[2];
   }
+
 
 date_default_timezone_set("America/Santiago");
 $today = new DateTime('now');
@@ -50,11 +62,25 @@ unset($created_at);unset($diff);unset($closed_at);
 unset ($repos);
 unset ($assoc);
 
-if (!isset($_GET['token'])) print "[1] reading watched repositories\n";
+if (!isset($_GET['token'])) print "[0] checking permissions\n";
 
+# Test permissions
+
+$ok = `curl -I -H "Authorization: token $token" https://api.github.com/user/subscriptions?per_page=100\&direction\=asc 2>/dev/null | head -n 1 | cut -d$' ' -f2`;
+$ok2 = `curl -I -H "Authorization: token $token" https://api.github.com/orgs/$org/issues 2>/dev/null | head -n 1 | cut -d$' ' -f2`;
+
+if ($ok != 200 || $ok2 != 200) 
+  {
+  print "Error connecting to GitHub, check credentials\n";
+  exit;
+  }
+
+if (!isset($_GET['token'])) print "[1] reading watched repositories\n";
 # Get Subscription ('cause subscription in filters doesn't work)
 $watchedrepo = array();
+
 $query = `curl -s -H "Authorization: token $token" https://api.github.com/user/subscriptions?per_page=100\&direction\=asc`;
+
 $query = json_decode($query);
 foreach ($query as $wrep)
   {
