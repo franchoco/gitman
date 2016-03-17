@@ -377,13 +377,13 @@ foreach ($reponames as $reponame => $value)
     print "<div class=divissue>";
     print "<div class=divopen>O:";
 
-    foreach ($nh['open'] as $o)
+    if (isset($nh['open'])) foreach ($nh['open'] as $o)
       {
       print_issue_number_linked($o,7,14);
       }
     print "</div><div class=divclosed>C:";
 
-    foreach ($nh['closed'] as $o)
+    if (isset($nh['closed'])) foreach ($nh['closed'] as $o)
       {
       print_issue_number_linked($o,7,14,true);
       }
